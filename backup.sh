@@ -1,4 +1,5 @@
 #!/bin/bash
+
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root"
     exit 1
@@ -111,12 +112,55 @@ if [ -n "$PSQL_PASSWORD" ]; then
         | bzip2' > "$BACKUP_PSQL_CURRENT"
 fi
 
+cd "$BACKUP_FS"
+ALL_BACKUPS=(*)
+KEEP_BACKUPS=()
+
+# keep one backup for each of last 7 days
+for i in {1..7}
+do
+    DAY_BACKUPS=(`date -v "-${i}d" +"%Y%m%d"`*)
+    if [ ${#DAY_BACKUPS[@]} > 0 ]; then
+        KEEP_BACKUPS=("${KEEP_BACKUPS[@]}" "${DAY_BACKUPS[0]}")
+    fi
+done
+
+# keep one backup for each of last 5 weeks
+for i in {1..5}
+do
+    WEEK_START=`date -v "-$((i+1))w" +"%Y%m%d"`
+    WEEK_END=`date -v "-${i}w" +"%Y%m%d"`
+    WEEK_BACKUPS=($(echo ${ALL_BACKUPS[@]} | awk -v RS=" " "\$0 < \"$WEEK_END\" && \$0 >= \"$WEEK_START\""))
+    if [ ${#WEEK_BACKUPS[@]} > 0 ]; then
+        KEEP_BACKUPS=("${KEEP_BACKUPS[@]}" "${WEEK_BACKUPS[0]}")
+    fi
+done
+
+# keep one backup for each of last 6 months
+for i in {1..6}
+do
+    MONTH_START=`date -v "-$((i+1))m" +"%Y%m%d"`
+    MONTH_END=`date -v "-${i}m" +"%Y%m%d"`
+    MONTH_BACKUPS=($(echo ${ALL_BACKUPS[@]} | awk -v RS=" " "\$0 < \"$MONTH_END\" && \$0 >= \"$MONTH_START\""))
+    if [ ${#MONTH_BACKUPS[@]} > 0 ]; then
+        KEEP_BACKUPS=("${KEEP_BACKUPS[@]}" "${MONTH_BACKUPS[0]}")
+    fi
+done
+
+for b in ${KEEP_BACKUPS[@]}
+do
+    ALL_BACKUPS=(${ALL_BACKUPS[@]/$b})
+done
+
+rm -rf ${ALL_BACKUPS[@]}
+
 if ! hdiutil detach "$BACKUP_MOUNT"
 then
     echo "Could not detach mountpoint"
     exit 1
 else 
     rm -rf "$BACKUP_MOUNT"
+    hdiutil compact "$BACKUP_FILE"
 fi
 
 echo "Backup of $SERVER_NAME to $DESTINATION completed at `date +'%Y-%m-%d %H:%M.%S'`"
