@@ -152,7 +152,11 @@ do
     ALL_BACKUPS=(${ALL_BACKUPS[@]/$b})
 done
 
+echo "Removing old backups..."
+
 rm -rf ${ALL_BACKUPS[@]}
+
+echo "Detaching backup image..."
 
 if ! hdiutil detach "$BACKUP_MOUNT"
 then
@@ -160,6 +164,7 @@ then
     exit 1
 else 
     rm -rf "$BACKUP_MOUNT"
+    echo "Compacting backup image..."
     hdiutil compact "$BACKUP_FILE"
 fi
 
