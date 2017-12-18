@@ -27,6 +27,7 @@ BACKUP_FS="$BACKUP_MOUNT/fs"
 EXCLUDES="$CWD/$BACKUP_NAME.excludes.rsync"
 TODAY=`date +"%Y%m%d%H%M%S"`
 BACKUP_FS_TODAY="$BACKUP_FS/$TODAY/"
+SERVER_USER=${SERVER_USER:-rsync}
 
 if [ ! -e "$EXCLUDES" ]; then
     echo "EXCLUDES file not found"
@@ -71,7 +72,7 @@ if [ "$BACKUP_FS_LAST" == "$BACKUP_FS/./" ]; then
 	    --exclude-from="$EXCLUDES" \
 	    --numeric-ids \
         --progress \
-        rsync@$SERVER_NAME:/ "$BACKUP_FS_TODAY"
+        $SERVER_USER@$SERVER_NAME:/ "$BACKUP_FS_TODAY"
 else
     echo "Previous backup was found at $BACKUP_FS_LAST. Creating incremental backup..."
     rsync -z -e "ssh" \
@@ -81,7 +82,7 @@ else
 	    --numeric-ids \
 	    --link-dest="$BACKUP_FS_LAST" \
         --progress \
-        rsync@$SERVER_NAME:/ "$BACKUP_FS_TODAY"
+        $SERVER_USER@$SERVER_NAME:/ "$BACKUP_FS_TODAY"
 fi
 
 if [ -n "$MYSQL_PASSWORD" ]; then
@@ -106,7 +107,7 @@ if [ -n "$PSQL_PASSWORD" ]; then
 
     echo "Backing up postgresql to $BACKUP_PSQL_CURRENT"
 
-    ssh rsync@$SERVER_NAME 'export PGPASSWORD="' + $PSQL_PASSWORD + '"; \
+    ssh $SERVER_USER@$SERVER_NAME 'export PGPASSWORD="' + $PSQL_PASSWORD + '"; \
         pg_dumpall -U postgres -h localhost \
         | bzip2' > "$BACKUP_PSQL_CURRENT"
 fi
