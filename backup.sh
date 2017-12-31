@@ -31,7 +31,7 @@ BACKUP_FS_TODAY="$BACKUP_FS/$TODAY/"
 SERVER_USER=${SERVER_USER:-rsync}
 
 if [ ! -e "$EXCLUDES" ]; then
-    echo "EXCLUDES file not found"
+    echo "EXCLUDES file ($EXCLUDES) not found"
     exit 1
 fi
 
